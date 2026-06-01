@@ -1,5 +1,5 @@
-import { Component, inject, Input, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Observable } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -216,13 +216,14 @@ import { Technology } from '../../../technologies/models/technology.model';
 })
 export class ProjectFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
   private readonly projectsService = inject(ProjectsService);
   private readonly categoriesService = inject(CategoriesService);
   private readonly technologiesService = inject(TechnologiesService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
 
-  @Input() id?: string;
+  private readonly projectId: string | undefined = this.route.snapshot.params['id'];
 
   readonly categories = signal<Category[]>([]);
   readonly technologies = signal<Technology[]>([]);
@@ -234,7 +235,7 @@ export class ProjectFormComponent implements OnInit {
   form!: FormGroup;
 
   get isEdit(): boolean {
-    return !!this.id;
+    return !!this.projectId;
   }
 
   ngOnInit(): void {
@@ -248,30 +249,34 @@ export class ProjectFormComponent implements OnInit {
       isFeatured: [false],
     });
 
-    forkJoin({
+    const sources: Record<string, Observable<unknown>> = {
       categories: this.categoriesService.getAll({ page: 1, limit: 200 }),
       technologies: this.technologiesService.getAll({ page: 1, limit: 200 }),
-    }).subscribe(({ categories, technologies }) => {
-      this.categories.set(categories.data);
-      this.technologies.set(technologies.data);
-    });
+    };
+    if (this.projectId) {
+      sources['project'] = this.projectsService.getById(this.projectId);
+    }
 
-    if (this.id) {
-      this.projectsService.getById(this.id).subscribe((project) => {
+    forkJoin(sources).subscribe((results: any) => {
+      this.categories.set(results['categories'].data);
+      this.technologies.set(results['technologies'].data);
+
+      if (results['project']) {
+        const project = results['project'];
         this.form.patchValue({
           title: project.title,
           description: project.description,
           projectUrl: project.projectUrl ?? '',
           repositoryUrl: project.repositoryUrl ?? '',
           categoryId: project.category?.id ?? null,
-          technologyIds: project.technologies?.map((t) => t.id) ?? [],
+          technologyIds: project.technologies?.map((t: any) => t.id) ?? [],
           isFeatured: project.isFeatured,
         });
         if (project.imageUrl) {
           this.imagePreview.set(project.imageUrl);
         }
-      });
-    }
+      }
+    });
   }
 
   invalid(field: string): boolean {
@@ -314,7 +319,7 @@ export class ProjectFormComponent implements OnInit {
     };
 
     const obs = this.isEdit
-      ? this.projectsService.update(this.id!, payload)
+      ? this.projectsService.update(this.projectId!, payload)
       : this.projectsService.create(payload);
 
     obs.subscribe({

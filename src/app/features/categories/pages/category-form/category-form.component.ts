@@ -1,4 +1,4 @@
-import { Component, inject, input, OnInit, output } from '@angular/core';
+import { Component, effect, inject, input, OnInit, output } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -82,6 +82,15 @@ export class CategoryFormComponent implements OnInit {
 
   form!: FormGroup;
 
+  constructor() {
+    effect(() => {
+      const cat = this.category();
+      if (this.form) {
+        this.form.reset({ name: cat?.name ?? '', slug: cat?.slug ?? '' });
+      }
+    });
+  }
+
   get nameInvalid(): boolean {
     const ctrl = this.form.get('name');
     return !!(ctrl?.invalid && ctrl.touched);
@@ -89,8 +98,8 @@ export class CategoryFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      name: [this.category()?.name ?? '', Validators.required],
-      slug: [this.category()?.slug ?? ''],
+      name: ['', Validators.required],
+      slug: [''],
     });
 
     this.form.get('name')?.valueChanges.subscribe((val: string) => {

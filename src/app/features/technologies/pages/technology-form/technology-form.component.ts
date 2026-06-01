@@ -1,4 +1,4 @@
-import { Component, inject, input, OnInit, output } from '@angular/core';
+import { Component, effect, inject, input, OnInit, output } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -98,6 +98,15 @@ export class TechnologyFormComponent implements OnInit {
 
   form!: FormGroup;
 
+  constructor() {
+    effect(() => {
+      const tech = this.technology();
+      if (this.form) {
+        this.form.reset({ name: tech?.name ?? '', iconUrl: tech?.iconUrl ?? '' });
+      }
+    });
+  }
+
   get nameInvalid(): boolean {
     const ctrl = this.form.get('name');
     return !!(ctrl?.invalid && ctrl.touched);
@@ -105,8 +114,8 @@ export class TechnologyFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      name: [this.technology()?.name ?? '', Validators.required],
-      iconUrl: [this.technology()?.iconUrl ?? ''],
+      name: ['', Validators.required],
+      iconUrl: [''],
     });
   }
 
