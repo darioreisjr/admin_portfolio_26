@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, Observable } from 'rxjs';
+import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -250,32 +250,54 @@ export class ProjectFormComponent implements OnInit {
     });
 
     const sources: Record<string, Observable<unknown>> = {
-      categories: this.categoriesService.getAll({ page: 1, limit: 200 }),
-      technologies: this.technologiesService.getAll({ page: 1, limit: 200 }),
+      categories: this.categoriesService.getAll({ page: 1, limit: 200 }).pipe(
+        catchError(() => of({ data: [] }))
+      ),
+      technologies: this.technologiesService.getAll({ page: 1, limit: 200 }).pipe(
+        catchError(() => of({ data: [] }))
+      ),
     };
     if (this.projectId) {
-      sources['project'] = this.projectsService.getById(this.projectId);
+      sources['project'] = this.projectsService.getById(this.projectId).pipe(
+        catchError(() => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: 'Não foi possível carregar os dados do projeto.',
+          });
+          return of(null);
+        })
+      );
     }
 
-    forkJoin(sources).subscribe((results: any) => {
-      this.categories.set(results['categories'].data);
-      this.technologies.set(results['technologies'].data);
+    forkJoin(sources).subscribe({
+      next: (results: any) => {
+        this.categories.set(results['categories']?.data ?? []);
+        this.technologies.set(results['technologies']?.data ?? []);
 
-      if (results['project']) {
-        const project = results['project'];
-        this.form.patchValue({
-          title: project.title,
-          description: project.description,
-          projectUrl: project.projectUrl ?? '',
-          repositoryUrl: project.repositoryUrl ?? '',
-          categoryId: project.category?.id ?? null,
-          technologyIds: project.technologies?.map((t: any) => t.id) ?? [],
-          isFeatured: project.isFeatured,
-        });
-        if (project.imageUrl) {
-          this.imagePreview.set(project.imageUrl);
+        if (results['project']) {
+          const project = results['project'].data ?? results['project'];
+          this.form.patchValue({
+            title: project.title,
+            description: project.description,
+            projectUrl: project.projectUrl ?? '',
+            repositoryUrl: project.repositoryUrl ?? '',
+            categoryId: project.category?.id ?? null,
+            technologyIds: project.technologies?.map((t: any) => t.id) ?? [],
+            isFeatured: project.isFeatured,
+          });
+          if (project.imageUrl) {
+            this.imagePreview.set(project.imageUrl);
+          }
         }
-      }
+      },
+      error: () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Erro',
+          detail: 'Erro ao carregar dados do formulário.',
+        });
+      },
     });
   }
 
