@@ -94,8 +94,8 @@ import { Project } from '../../models/project.model';
           </td>
           <td>
             <div class="tech-chips">
-              @for (tech of project.technologies?.slice(0, 3); track tech.id) {
-                <span class="tech-chip">{{ tech.name }}</span>
+              @for (tech of project.technologies?.slice(0, 3); track tech.technology?.id ?? tech.technologyId) {
+                <span class="tech-chip">{{ tech.technology?.name ?? tech.name }}</span>
               }
               @if (project.technologies?.length > 3) {
                 <span class="tech-chip tech-chip--more">+{{ project.technologies.length - 3 }}</span>

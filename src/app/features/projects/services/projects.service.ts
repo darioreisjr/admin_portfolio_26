@@ -44,7 +44,7 @@ export class ProjectsService extends ApiBaseService {
       if (v !== undefined && v !== null) fd.append(k, String(v));
     });
     if (technologyIds?.length) {
-      fd.append('technologyIds', JSON.stringify(technologyIds));
+      technologyIds.forEach(id => fd.append('technologyIds[]', id));
     }
     if (image) fd.append('image', image, image.name);
     return fd;

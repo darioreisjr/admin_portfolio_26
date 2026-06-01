@@ -283,7 +283,7 @@ export class ProjectFormComponent implements OnInit {
             projectUrl: project.projectUrl ?? '',
             repositoryUrl: project.repositoryUrl ?? '',
             categoryId: project.category?.id ?? null,
-            technologyIds: project.technologies?.map((t: any) => t.id) ?? [],
+            technologyIds: project.technologies?.map((t: any) => t.technology?.id ?? t.id) ?? [],
             isFeatured: project.isFeatured,
           });
           if (project.imageUrl) {
