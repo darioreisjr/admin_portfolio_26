@@ -10,7 +10,7 @@ Construído com Angular 21, PrimeNG 21 e arquitetura feature-based moderna.
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-[Reportar Bug](https://github.com/seu-usuario/admin-portfolio/issues) · [Solicitar Feature](https://github.com/seu-usuario/admin-portfolio/issues)
+[Reportar Bug](https://github.com/darioreisjr/admin_portfolio_26/issues) · [Solicitar Feature](https://github.com/darioreisjr/admin_portfolio_26/issues)
 
 </div>
 
@@ -27,6 +27,7 @@ Construído com Angular 21, PrimeNG 21 e arquitetura feature-based moderna.
 - [Instalação e Configuração](#instalação-e-configuração)
 - [Scripts Disponíveis](#scripts-disponíveis)
 - [Variáveis de Ambiente](#variáveis-de-ambiente)
+- [Autenticação](#autenticação)
 - [Rotas da Aplicação](#rotas-da-aplicação)
 - [Módulos e Features](#módulos-e-features)
 - [API e Serviços](#api-e-serviços)
@@ -56,13 +57,15 @@ Gerenciar conteúdo de portfólio diretamente via banco de dados ou chamadas de 
 
 ### Implementadas
 
+- **Autenticação JWT** — Login com token armazenado em `sessionStorage`, guards de rota e interceptor automático
+- **Proteção de rotas** — todas as rotas requerem autenticação; redirecionamento automático para `/login`
 - **Projetos** — CRUD completo com upload de imagem, multi-select de tecnologias, vinculação de categoria e flag de destaque
 - **Categorias** — CRUD com geração automática de slug a partir do nome
 - **Tecnologias** — CRUD com preview de ícone em tempo real via URL
 - **Busca em tempo real** — debounce de 400ms nas listagens
 - **Paginação lazy-load** — 10, 25 ou 50 itens por página
 - **Loading global** — barra de progresso no topbar em todas as requisições HTTP
-- **Tratamento de erros global** — interceptor que captura erros HTTP e exibe toast
+- **Tratamento de erros global** — interceptor que captura erros HTTP e exibe toast; 401 faz logout automático
 - **Confirmação de deleção** — dialog de confirmação antes de remover qualquer registro
 - **Formulários reativos** — validação em tempo real com Reactive Forms
 - **Tema Aura** — suporte nativo a dark mode via classe `.dark-mode`
@@ -109,11 +112,18 @@ A aplicação segue **Feature-Based Architecture** (arquitetura orientada a func
               │   App Routes    │  (Lazy Loading)
               └────────┬────────┘
                        │
+           ┌───────────▼──────────────┐
+           │       /login             │  ← loginGuard (redireciona se já logado)
+           │    LoginComponent        │
+           └───────────┬──────────────┘
+                       │ (autenticado)
        ┌───────────────▼───────────────────┐
+       │    authGuard (redireciona se       │
+       │    não autenticado → /login)       │
        │         MainLayoutComponent        │
        ├──────────────┬────────────────────┤
        │ SidebarComponent │ TopbarComponent │
-       │                  │ [Loading Bar]   │
+       │  [Botão Sair]    │ [Loading Bar]   │
        ├──────────────────┴────────────────┤
        │            Router Outlet           │
        └───────┬──────────────┬────────────┘
@@ -132,7 +142,7 @@ A aplicação segue **Feature-Based Architecture** (arquitetura orientada a func
     │                   Core Layer                       │
     ├───────────────┬──────────────┬────────────────────┤
     │ ApiBaseService│   Interceptors│ NotificationService│
-    │  (HTTP base)  │  Loading/Error│  (Loading Signal)  │
+    │  (HTTP base)  │ Auth/Load/Err │  (Loading Signal)  │
     └───────────────┴──────────────┴────────────────────┘
                        │
               ┌────────▼──────────────────────┐
@@ -152,6 +162,8 @@ A aplicação segue **Feature-Based Architecture** (arquitetura orientada a func
 | Rotas | Lazy-load por feature | Bundle inicial menor, carregamento sob demanda |
 | HTTP | Interceptors funcionais | Sem classes desnecessárias, composição simples |
 | Formulários | Reactive Forms | Validação programática, testável |
+| Auth token | sessionStorage | Token expira ao fechar a aba; sem persistência entre sessões |
+| Auth guard | Guard no shell route | Um único `canActivate` protege todos os filhos sem repetição |
 
 ---
 
@@ -162,8 +174,12 @@ admin-portfolio/
 ├── src/
 │   ├── app/
 │   │   ├── core/                        # Serviços e infraestrutura global
+│   │   │   ├── guards/
+│   │   │   │   ├── auth.guard.ts            # Redireciona para /login se não autenticado
+│   │   │   │   └── login.guard.ts           # Redireciona para /projects se já logado
 │   │   │   ├── interceptors/
-│   │   │   │   ├── error.interceptor.ts     # Captura erros HTTP → toast
+│   │   │   │   ├── auth.interceptor.ts      # Injeta Bearer token em todas as requests
+│   │   │   │   ├── error.interceptor.ts     # Captura erros HTTP → toast; 401 → logout
 │   │   │   │   └── loading.interceptor.ts   # Controla spinner global
 │   │   │   ├── models/
 │   │   │   │   └── api-response.model.ts    # PaginatedResponse<T>, PaginationParams
@@ -172,6 +188,15 @@ admin-portfolio/
 │   │   │       └── notification.service.ts  # Signal isLoading + setLoading()
 │   │   │
 │   │   ├── features/                    # Domínios de negócio (cada um isolado)
+│   │   │   ├── auth/
+│   │   │   │   ├── models/
+│   │   │   │   │   └── auth.model.ts        # LoginPayload, LoginResponse
+│   │   │   │   ├── pages/login/
+│   │   │   │   │   └── login.component.ts   # Página de login
+│   │   │   │   ├── services/
+│   │   │   │   │   └── auth.service.ts      # Estado JWT: isAuthenticated, login, logout
+│   │   │   │   └── auth.routes.ts
+│   │   │   │
 │   │   │   ├── categories/
 │   │   │   │   ├── models/
 │   │   │   │   │   └── category.model.ts    # Category, CreateCategoryPayload
@@ -259,7 +284,7 @@ npm install -g @angular/cli@21
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/admin-portfolio.git
+git clone https://github.com/darioreisjr/admin_portfolio_26.git
 cd admin-portfolio
 ```
 
@@ -318,19 +343,62 @@ A aplicação utiliza o sistema nativo de environments do Angular.
 
 ---
 
+## Autenticação
+
+A aplicação usa **JWT Bearer Token** para autenticar todas as requisições à API. Não há área pública — qualquer rota requer login.
+
+### Fluxo de Autenticação
+
+```
+1. Usuário acessa qualquer rota
+2. authGuard verifica AuthService.isAuthenticated()
+3. Se não autenticado → redireciona para /login
+4. Usuário preenche e-mail e senha → POST /auth/login
+5. API retorna { data: { token } }
+6. Token salvo no sessionStorage
+7. isAuthenticated signal = true → redireciona para /projects
+8. authInterceptor injeta Authorization: Bearer <token> em todas as requests
+9. Se a API retornar 401 → ErrorInterceptor chama logout() → redireciona para /login
+```
+
+### AuthService
+
+```typescript
+authService.isAuthenticated()  // Signal<boolean> — estado reativo
+authService.login(payload)     // POST /auth/login → salva token
+authService.logout()           // Remove token + navega para /login
+authService.getToken()         // Retorna token do sessionStorage
+```
+
+### Armazenamento do Token
+
+| Aspecto | Comportamento |
+|---|---|
+| Storage | `sessionStorage` |
+| Escopo | Por aba do navegador |
+| Persistência | Perdido ao fechar a aba |
+| Segurança | Não persiste entre sessões; protegido por HTTPS em trânsito |
+
+### Credenciais
+
+A conta de administrador é criada diretamente no dashboard do Supabase. Não há endpoint de cadastro.
+
+---
+
 ## Rotas da Aplicação
 
-| Path | Componente | Descrição |
-|---|---|---|
-| `/` | Redirect | Redireciona para `/projects` |
-| `/projects` | `ProjectListComponent` | Listagem de projetos com busca e paginação |
-| `/projects/new` | `ProjectFormComponent` | Formulário de criação de projeto |
-| `/projects/:id/edit` | `ProjectFormComponent` | Formulário de edição de projeto |
-| `/categories` | `CategoryListComponent` | Listagem e gerenciamento de categorias |
-| `/technologies` | `TechnologyListComponent` | Listagem e gerenciamento de tecnologias |
-| `**` | Redirect | Qualquer rota inválida redireciona para `/` |
+| Path | Componente | Guard | Descrição |
+|---|---|---|---|
+| `/login` | `LoginComponent` | `loginGuard` | Página de login; redireciona para `/projects` se já autenticado |
+| `/` | Redirect | `authGuard` | Redireciona para `/projects` |
+| `/projects` | `ProjectListComponent` | `authGuard` (herdado) | Listagem de projetos com busca e paginação |
+| `/projects/new` | `ProjectFormComponent` | `authGuard` (herdado) | Formulário de criação de projeto |
+| `/projects/:id/edit` | `ProjectFormComponent` | `authGuard` (herdado) | Formulário de edição de projeto |
+| `/categories` | `CategoryListComponent` | `authGuard` (herdado) | Listagem e gerenciamento de categorias |
+| `/technologies` | `TechnologyListComponent` | `authGuard` (herdado) | Listagem e gerenciamento de tecnologias |
+| `**` | Redirect | — | Qualquer rota inválida redireciona para `/` |
 
-Todas as rotas filhas são **lazy-loaded** por feature. O `MainLayoutComponent` é o shell que envolve todas as rotas com sidebar e topbar.
+Todas as rotas filhas são **lazy-loaded** por feature. O `authGuard` é aplicado no shell route (`MainLayoutComponent`), protegendo todos os filhos com um único guard.
 
 ---
 
@@ -469,6 +537,13 @@ interface PaginationParams {
 
 ### Interceptors HTTP
 
+A cadeia de interceptors é executada nesta ordem: **auth → loading → error**.
+
+**`AuthInterceptor`**
+- Lê o token JWT via `AuthService.getToken()`
+- Clona a requisição adicionando `Authorization: Bearer <token>`
+- Se não houver token, passa a requisição sem modificação
+
 **`LoadingInterceptor`**
 - Incrementa contador de requisições ao iniciar
 - Decrementa no `finalize()` (sucesso ou erro)
@@ -476,8 +551,8 @@ interface PaginationParams {
 
 **`ErrorInterceptor`**
 - Captura qualquer erro HTTP
-- Tenta extrair `error.error.message`, fallback para `error.message`
-- Exibe `p-toast` de erro com duração de 5 segundos
+- **401 Unauthorized:** chama `AuthService.logout()` se houver sessão ativa (sem toast)
+- Outros erros: exibe `p-toast` de erro com duração de 5 segundos
 - Re-lança o erro para tratamento específico nos componentes
 
 ### NotificationService
@@ -662,7 +737,8 @@ npx http-server dist/admin-portfolio/browser -p 8080
 
 Funcionalidades planejadas para as próximas versões:
 
-- [ ] **Autenticação** — Login com JWT, guards de rota, refresh token
+- [x] **Autenticação** — Login com JWT, guards de rota, interceptor automático de token
+- [ ] **Refresh token** — Renovação automática de token expirado sem novo login
 - [ ] **Dashboard com métricas** — Contador de projetos, categorias, tecnologias e acessos
 - [ ] **Gerenciamento de depoimentos** — CRUD de testimonials para portfólio
 - [ ] **Gerenciamento de experiências** — CRUD de experiências profissionais

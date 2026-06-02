@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ButtonModule } from 'primeng/button';
+import { AuthService } from '../../features/auth/services/auth.service';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ButtonModule],
   template: `
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -40,6 +42,19 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
           <span>Tecnologias</span>
         </a>
       </nav>
+
+      <div class="sidebar-footer">
+        <button
+          pButton
+          type="button"
+          icon="pi pi-sign-out"
+          label="Sair"
+          [text]="true"
+          severity="secondary"
+          class="logout-btn"
+          (click)="authService.logout()"
+        ></button>
+      </div>
     </aside>
   `,
   styles: [`
@@ -91,6 +106,17 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         font-weight: 600;
       }
     }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 0.75rem 0.5rem;
+      border-top: 1px solid var(--surface-border);
+    }
+    .logout-btn {
+      width: 100%;
+      justify-content: flex-start;
+    }
   `],
 })
-export class SidebarComponent {}
+export class SidebarComponent {
+  readonly authService = inject(AuthService);
+}
